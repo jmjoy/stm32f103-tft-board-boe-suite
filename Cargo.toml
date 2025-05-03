@@ -6,6 +6,7 @@ authors = ["jmjoy <jmjoy@apache.org>"]
 license = "MulanPSL-2.0"
 repository = "https://github.com/jmjoy/stm32f103-tft-board-boe-suite"
 rust-version = "1.85"
+description = "移植《STM32F103 TFT开发板综合测试程序-京东方玻璃》到embassy-stm32"
 
 [dependencies]
 as-what = "0.1.1"
