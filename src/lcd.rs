@@ -1,13 +1,14 @@
 pub mod font;
+pub mod pic;
 
+use as_what::{AsU16, AsUsize};
 use embassy_stm32::{
     gpio::{Level, Output},
     mode::{self, Async},
     spi::Spi,
 };
 use embassy_time::Timer;
-use font::{ChineseFontSize, FontSize, ASCII_1206, ASCII_1608, ASCII_2412, ASCII_3216};
-use as_what::{AsU16, AsUsize};
+use font::{ASCII_1206, ASCII_1608, ASCII_2412, ASCII_3216, ChineseFontSize, FontSize};
 
 pub const DIRECTION: Direction = Direction::Horizontal0;
 
@@ -55,7 +56,7 @@ pub enum Color {
 #[derive(Clone, Copy)]
 pub enum CharMode {
     NonOverlay,
-    Overlay
+    Overlay,
 }
 
 pub struct LCD {
@@ -229,10 +230,10 @@ impl LCD {
         let mut delta_x = i32::from(x2) - i32::from(x1);
         let delta_y = i32::from(y2) - i32::from(y1);
         let distance: i32;
-        
+
         let incx: i32;
         let incy: i32;
-        
+
         let mut row = i32::from(x1);
         let mut col = i32::from(y1);
 
@@ -264,12 +265,12 @@ impl LCD {
             self.draw_point(row as u16, col as u16, color).await;
             xerr += delta_x;
             yerr += delta_y;
-            
+
             if xerr > distance {
                 xerr -= distance;
                 row += incx;
             }
-            
+
             if yerr > distance {
                 yerr -= distance;
                 col += incy;
@@ -287,17 +288,25 @@ impl LCD {
     pub async fn draw_circle(&mut self, x0: u16, y0: u16, r: u8, color: u16) {
         let mut a: i32 = 0;
         let mut b: i32 = r as i32;
-        
+
         while a <= b {
-            self.draw_point(x0.wrapping_sub(b as u16), y0.wrapping_sub(a as u16), color).await;
-            self.draw_point(x0.wrapping_add(b as u16), y0.wrapping_sub(a as u16), color).await;
-            self.draw_point(x0.wrapping_sub(a as u16), y0.wrapping_add(b as u16), color).await;
-            self.draw_point(x0.wrapping_sub(a as u16), y0.wrapping_sub(b as u16), color).await;
-            self.draw_point(x0.wrapping_add(b as u16), y0.wrapping_add(a as u16), color).await;
-            self.draw_point(x0.wrapping_add(a as u16), y0.wrapping_sub(b as u16), color).await;
-            self.draw_point(x0.wrapping_add(a as u16), y0.wrapping_add(b as u16), color).await;
-            self.draw_point(x0.wrapping_sub(b as u16), y0.wrapping_add(a as u16), color).await;
-            
+            self.draw_point(x0.wrapping_sub(b as u16), y0.wrapping_sub(a as u16), color)
+                .await;
+            self.draw_point(x0.wrapping_add(b as u16), y0.wrapping_sub(a as u16), color)
+                .await;
+            self.draw_point(x0.wrapping_sub(a as u16), y0.wrapping_add(b as u16), color)
+                .await;
+            self.draw_point(x0.wrapping_sub(a as u16), y0.wrapping_sub(b as u16), color)
+                .await;
+            self.draw_point(x0.wrapping_add(b as u16), y0.wrapping_add(a as u16), color)
+                .await;
+            self.draw_point(x0.wrapping_add(a as u16), y0.wrapping_sub(b as u16), color)
+                .await;
+            self.draw_point(x0.wrapping_add(a as u16), y0.wrapping_add(b as u16), color)
+                .await;
+            self.draw_point(x0.wrapping_sub(b as u16), y0.wrapping_add(a as u16), color)
+                .await;
+
             a += 1;
             if (a * a + b * b) > (r as i32 * r as i32) {
                 b -= 1;
@@ -305,18 +314,28 @@ impl LCD {
         }
     }
 
-    pub async fn show_char(&mut self, mut x: u16, mut y: u16, ch: char, fc: u16, bc: u16, size: FontSize, mode: CharMode) {
+    pub async fn show_char(
+        &mut self,
+        mut x: u16,
+        mut y: u16,
+        ch: char,
+        fc: u16,
+        bc: u16,
+        size: FontSize,
+        mode: CharMode,
+    ) {
         let size_y = size.y();
         let size_x = size.x();
         let typeface_num = (size_x / 8 + if size_x % 8 != 0 { 1 } else { 0 }) * size_y;
         let num = ch.as_usize() - ' '.as_usize();
-        
+
         let x0 = x;
         let mut m = 0;
-        
+
         // Set address range for this character
-        self.set_address(x, y, x + size_x.as_u16() - 1, y + size_y.as_u16() - 1).await;
-        
+        self.set_address(x, y, x + size_x.as_u16() - 1, y + size_y.as_u16() - 1)
+            .await;
+
         // Select appropriate font based on size
         for i in 0..typeface_num.as_usize() {
             // In a real implementation, we would access font data here
@@ -327,7 +346,7 @@ impl LCD {
                 FontSize::_12x24 => ASCII_2412[num][i],
                 FontSize::_16x32 => ASCII_3216[num][i],
             };
-            
+
             for t in 0..8 {
                 match mode {
                     CharMode::NonOverlay => {
@@ -336,93 +355,175 @@ impl LCD {
                         } else {
                             self.write_data(&[bc]).await;
                         }
-                        
+
                         m += 1;
                         if m % size_x == 0 {
                             m = 0;
                             break;
                         }
-                    },
+                    }
                     CharMode::Overlay => {
                         if (temp & (0x01 << t)) != 0 {
                             self.draw_point(x, y, fc).await;
                         }
-                        
+
                         x += 1;
                         if (x - x0) == size_x as u16 {
                             x = x0;
                             y += 1;
                             break;
                         }
-                    },
+                    }
                 }
             }
         }
     }
-    
-    pub async fn show_string(&mut self, mut x: u16, y: u16, s: &str, fc: u16, bc: u16, size: FontSize, mode: CharMode) {
+
+    pub async fn show_string(
+        &mut self,
+        mut x: u16,
+        y: u16,
+        s: &str,
+        fc: u16,
+        bc: u16,
+        size: FontSize,
+        mode: CharMode,
+    ) {
         let size_y = size.y();
         for c in s.chars() {
             self.show_char(x, y, c, fc, bc, size, mode).await;
             x += size_y.as_u16() / 2;
         }
     }
-    
-    pub async fn show_int_num(&mut self, x: u16, y: u16, num: u16, len: u8, fc: u16, bc: u16, size: FontSize) {
+
+    pub async fn show_int_num(
+        &mut self,
+        x: u16,
+        y: u16,
+        num: u16,
+        len: u8,
+        fc: u16,
+        bc: u16,
+        size: FontSize,
+    ) {
         let mut enshow = false;
         let size_x = size.x();
-        
+
         for t in 0..len {
             let temp = ((num / 10u16.pow((len - t - 1) as u32)) % 10) as u8;
-            
+
             if enshow == false && t < (len - 1) {
                 if temp == 0 {
-                    self.show_char(x + t as u16 * size_x as u16, y, ' ', fc, bc, size, CharMode::NonOverlay).await;
+                    self.show_char(
+                        x + t as u16 * size_x as u16,
+                        y,
+                        ' ',
+                        fc,
+                        bc,
+                        size,
+                        CharMode::NonOverlay,
+                    )
+                    .await;
                     continue;
                 } else {
                     enshow = true;
                 }
             }
-            
-            self.show_char(x + t as u16 * size_x as u16, y, (temp + 48) as char, fc, bc, size, CharMode::NonOverlay).await;
-        }
-    }
-    
-    pub async fn show_float_num(&mut self, x: u16, y: u16, num: f32, len: u8, fc: u16, bc: u16, size: FontSize) {
-        let size_x = size.x();
-        let num1 = (num * 100.0) as u16;
-        let mut len = len;
-        
-        for mut t in 0..len {
-            let temp = ((num1 / 10u16.pow((len - t - 1) as u32) as u16) % 10) as u8;
-            
-            if t == (len - 2) {
-                self.show_char(x + (len - 2) as u16 * size_x as u16, y, '.', fc, bc, size, CharMode::NonOverlay).await;
-                t += 1;
-                len += 1;
-            }
-            
-            self.show_char(x + t as u16 * size_x as u16, y, (temp + 48) as char, fc, bc, size, CharMode::NonOverlay).await;
+
+            self.show_char(
+                x + t as u16 * size_x as u16,
+                y,
+                (temp + 48) as char,
+                fc,
+                bc,
+                size,
+                CharMode::NonOverlay,
+            )
+            .await;
         }
     }
 
-    pub async fn show_chinese(&mut self, mut x: u16, y: u16, s: &str, fc: u16, bc: u16, size: ChineseFontSize, mode: CharMode) {
+    pub async fn show_float_num(
+        &mut self,
+        x: u16,
+        y: u16,
+        num: f32,
+        len: u8,
+        fc: u16,
+        bc: u16,
+        size: FontSize,
+    ) {
+        let size_x = size.x();
+        let num1 = (num * 100.0) as u16;
+        let mut len = len;
+
+        for mut t in 0..len {
+            let temp = ((num1 / 10u16.pow((len - t - 1) as u32) as u16) % 10) as u8;
+
+            if t == (len - 2) {
+                self.show_char(
+                    x + (len - 2) as u16 * size_x as u16,
+                    y,
+                    '.',
+                    fc,
+                    bc,
+                    size,
+                    CharMode::NonOverlay,
+                )
+                .await;
+                t += 1;
+                len += 1;
+            }
+
+            self.show_char(
+                x + t as u16 * size_x as u16,
+                y,
+                (temp + 48) as char,
+                fc,
+                bc,
+                size,
+                CharMode::NonOverlay,
+            )
+            .await;
+        }
+    }
+
+    pub async fn show_chinese(
+        &mut self,
+        mut x: u16,
+        y: u16,
+        s: &str,
+        fc: u16,
+        bc: u16,
+        size: ChineseFontSize,
+        mode: CharMode,
+    ) {
         for ch in s.chars() {
             self.show_chinese_char(x, y, ch, fc, bc, size, mode).await;
             x += size.y() as u16;
         }
     }
-    
-    async fn show_chinese_char(&mut self, mut x: u16, mut y: u16, ch: char, fc: u16, bc: u16, size: ChineseFontSize, mode: CharMode) {
+
+    async fn show_chinese_char(
+        &mut self,
+        mut x: u16,
+        mut y: u16,
+        ch: char,
+        fc: u16,
+        bc: u16,
+        size: ChineseFontSize,
+        mode: CharMode,
+    ) {
         let size_y = size.y() as usize;
         let size_x = size.x() as usize;
         let typeface_num = (size_x / 8 + if size_x % 8 != 0 { 1 } else { 0 }) * size_y;
-        
+
         let x0 = x;
         let mut m = 0;
-        
-        self.set_address(x, y, x + size_y as u16 - 1, y + size_y as u16 - 1).await;
-        
+
+        self.set_address(x, y, x + size_y as u16 - 1, y + size_y as u16 - 1)
+            .await;
+
         match size {
             ChineseFontSize::_12x12 => {
                 // Search for character in TFONT12
@@ -437,32 +538,32 @@ impl LCD {
                                         } else {
                                             self.write_data(&[bc]).await;
                                         }
-                                        
+
                                         m += 1;
                                         if m % size_y == 0 {
                                             m = 0;
                                             break;
                                         }
-                                    },
+                                    }
                                     CharMode::Overlay => {
                                         if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
                                             self.draw_point(x, y, fc).await;
                                         }
-                                        
+
                                         x += 1;
                                         if (x - x0) == size_y as u16 {
                                             x = x0;
                                             y += 1;
                                             break;
                                         }
-                                    },
+                                    }
                                 }
                             }
                         }
                         return; // Found the character, exit the function
                     }
                 }
-            },
+            }
             ChineseFontSize::_16x16 => {
                 // Search for character in TFONT16
                 for font in font::TFONT16.iter() {
@@ -476,32 +577,32 @@ impl LCD {
                                         } else {
                                             self.write_data(&[bc]).await;
                                         }
-                                        
+
                                         m += 1;
                                         if m % size_y == 0 {
                                             m = 0;
                                             break;
                                         }
-                                    },
+                                    }
                                     CharMode::Overlay => {
                                         if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
                                             self.draw_point(x, y, fc).await;
                                         }
-                                        
+
                                         x += 1;
                                         if (x - x0) == size_y as u16 {
                                             x = x0;
                                             y += 1;
                                             break;
                                         }
-                                    },
+                                    }
                                 }
                             }
                         }
                         return; // Found the character, exit the function
                     }
                 }
-            },
+            }
             ChineseFontSize::_24x24 => {
                 // Search for character in TFONT24
                 for font in font::TFONT24.iter() {
@@ -515,32 +616,32 @@ impl LCD {
                                         } else {
                                             self.write_data(&[bc]).await;
                                         }
-                                        
+
                                         m += 1;
                                         if m % size_y == 0 {
                                             m = 0;
                                             break;
                                         }
-                                    },
+                                    }
                                     CharMode::Overlay => {
                                         if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
                                             self.draw_point(x, y, fc).await;
                                         }
-                                        
+
                                         x += 1;
                                         if (x - x0) == size_y as u16 {
                                             x = x0;
                                             y += 1;
                                             break;
                                         }
-                                    },
+                                    }
                                 }
                             }
                         }
                         return; // Found the character, exit the function
                     }
                 }
-            },
+            }
             ChineseFontSize::_32x32 => {
                 // Search for character in TFONT32
                 for font in font::TFONT32.iter() {
@@ -554,32 +655,61 @@ impl LCD {
                                         } else {
                                             self.write_data(&[bc]).await;
                                         }
-                                        
+
                                         m += 1;
                                         if m % size_y == 0 {
                                             m = 0;
                                             break;
                                         }
-                                    },
+                                    }
                                     CharMode::Overlay => {
                                         if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
                                             self.draw_point(x, y, fc).await;
                                         }
-                                        
+
                                         x += 1;
                                         if (x - x0) == size_y as u16 {
                                             x = x0;
                                             y += 1;
                                             break;
                                         }
-                                    },
+                                    }
                                 }
                             }
                         }
                         return; // Found the character, exit the function
                     }
                 }
-            },
+            }
+        }
+    }
+
+    // void LCD_ShowPicture(u16 x,u16 y,u16 length,u16 width,const u8 pic[])
+    // {
+    // 	u16 i,j;
+    // 	u32 k=0;
+    // 	LCD_Address_Set(x,y,x+length-1,y+width-1);
+    // 	for(i=0;i<length;i++)
+    // 	{
+    // 		for(j=0;j<width;j++)
+    // 		{
+    // 			LCD_WR_DATA8(pic[k*2]);
+    // 			LCD_WR_DATA8(pic[k*2+1]);
+    // 			k++;
+    // 		}
+    // 	}
+    // }
+
+    pub async fn show_picture(&mut self, x: u16, y: u16, length: u16, width: u16, pic: &[u8]) {
+        self.set_address(x, y, x + length - 1, y + width - 1).await;
+
+        let mut k = 0usize;
+
+        for _ in 0..length {
+            for _ in 0..width {
+                self.write_data8(&[pic[k * 2], pic[k * 2 + 1]]).await;
+                k += 1;
+            }
         }
     }
 }
