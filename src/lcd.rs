@@ -6,7 +6,7 @@ use embassy_stm32::{
     spi::Spi,
 };
 use embassy_time::Timer;
-use font::{FontSize, ASCII_1206, ASCII_1608, ASCII_2412, ASCII_3216};
+use font::{ChineseFontSize, FontSize, ASCII_1206, ASCII_1608, ASCII_2412, ASCII_3216};
 use as_what::{AsU16, AsUsize};
 
 pub const DIRECTION: Direction = Direction::Horizontal0;
@@ -403,6 +403,183 @@ impl LCD {
             }
             
             self.show_char(x + t as u16 * size_x as u16, y, (temp + 48) as char, fc, bc, size, CharMode::NonOverlay).await;
+        }
+    }
+
+    pub async fn show_chinese(&mut self, mut x: u16, y: u16, s: &str, fc: u16, bc: u16, size: ChineseFontSize, mode: CharMode) {
+        for ch in s.chars() {
+            self.show_chinese_char(x, y, ch, fc, bc, size, mode).await;
+            x += size.y() as u16;
+        }
+    }
+    
+    async fn show_chinese_char(&mut self, mut x: u16, mut y: u16, ch: char, fc: u16, bc: u16, size: ChineseFontSize, mode: CharMode) {
+        let size_y = size.y() as usize;
+        let size_x = size.x() as usize;
+        let typeface_num = (size_x / 8 + if size_x % 8 != 0 { 1 } else { 0 }) * size_y;
+        
+        let x0 = x;
+        let mut m = 0;
+        
+        self.set_address(x, y, x + size_y as u16 - 1, y + size_y as u16 - 1).await;
+        
+        match size {
+            ChineseFontSize::_12x12 => {
+                // Search for character in TFONT12
+                for font in font::TFONT12.iter() {
+                    if font.index == ch {
+                        for i in 0..typeface_num {
+                            for j in 0..8 {
+                                match mode {
+                                    CharMode::NonOverlay => {
+                                        if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
+                                            self.write_data(&[fc]).await;
+                                        } else {
+                                            self.write_data(&[bc]).await;
+                                        }
+                                        
+                                        m += 1;
+                                        if m % size_y == 0 {
+                                            m = 0;
+                                            break;
+                                        }
+                                    },
+                                    CharMode::Overlay => {
+                                        if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
+                                            self.draw_point(x, y, fc).await;
+                                        }
+                                        
+                                        x += 1;
+                                        if (x - x0) == size_y as u16 {
+                                            x = x0;
+                                            y += 1;
+                                            break;
+                                        }
+                                    },
+                                }
+                            }
+                        }
+                        return; // Found the character, exit the function
+                    }
+                }
+            },
+            ChineseFontSize::_16x16 => {
+                // Search for character in TFONT16
+                for font in font::TFONT16.iter() {
+                    if font.index == ch {
+                        for i in 0..typeface_num {
+                            for j in 0..8 {
+                                match mode {
+                                    CharMode::NonOverlay => {
+                                        if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
+                                            self.write_data(&[fc]).await;
+                                        } else {
+                                            self.write_data(&[bc]).await;
+                                        }
+                                        
+                                        m += 1;
+                                        if m % size_y == 0 {
+                                            m = 0;
+                                            break;
+                                        }
+                                    },
+                                    CharMode::Overlay => {
+                                        if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
+                                            self.draw_point(x, y, fc).await;
+                                        }
+                                        
+                                        x += 1;
+                                        if (x - x0) == size_y as u16 {
+                                            x = x0;
+                                            y += 1;
+                                            break;
+                                        }
+                                    },
+                                }
+                            }
+                        }
+                        return; // Found the character, exit the function
+                    }
+                }
+            },
+            ChineseFontSize::_24x24 => {
+                // Search for character in TFONT24
+                for font in font::TFONT24.iter() {
+                    if font.index == ch {
+                        for i in 0..typeface_num {
+                            for j in 0..8 {
+                                match mode {
+                                    CharMode::NonOverlay => {
+                                        if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
+                                            self.write_data(&[fc]).await;
+                                        } else {
+                                            self.write_data(&[bc]).await;
+                                        }
+                                        
+                                        m += 1;
+                                        if m % size_y == 0 {
+                                            m = 0;
+                                            break;
+                                        }
+                                    },
+                                    CharMode::Overlay => {
+                                        if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
+                                            self.draw_point(x, y, fc).await;
+                                        }
+                                        
+                                        x += 1;
+                                        if (x - x0) == size_y as u16 {
+                                            x = x0;
+                                            y += 1;
+                                            break;
+                                        }
+                                    },
+                                }
+                            }
+                        }
+                        return; // Found the character, exit the function
+                    }
+                }
+            },
+            ChineseFontSize::_32x32 => {
+                // Search for character in TFONT32
+                for font in font::TFONT32.iter() {
+                    if font.index == ch {
+                        for i in 0..typeface_num {
+                            for j in 0..8 {
+                                match mode {
+                                    CharMode::NonOverlay => {
+                                        if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
+                                            self.write_data(&[fc]).await;
+                                        } else {
+                                            self.write_data(&[bc]).await;
+                                        }
+                                        
+                                        m += 1;
+                                        if m % size_y == 0 {
+                                            m = 0;
+                                            break;
+                                        }
+                                    },
+                                    CharMode::Overlay => {
+                                        if i < font.msk.len() && font.msk[i] & (0x01 << j) != 0 {
+                                            self.draw_point(x, y, fc).await;
+                                        }
+                                        
+                                        x += 1;
+                                        if (x - x0) == size_y as u16 {
+                                            x = x0;
+                                            y += 1;
+                                            break;
+                                        }
+                                    },
+                                }
+                            }
+                        }
+                        return; // Found the character, exit the function
+                    }
+                }
+            },
         }
     }
 }

@@ -20,7 +20,7 @@ use embassy_stm32::{
     usart::{self, Uart},
 };
 use embassy_time::Timer;
-use lcd::{font::FontSize, CharMode, Color, LCD};
+use lcd::{font::{ChineseFontSize, FontSize}, CharMode, Color, LCD};
 use num_enum::TryFromPrimitive;
 use w25qxx::{W25Qxx, W25QxxID};
 use {defmt_rtt as _, panic_probe as _};
@@ -151,8 +151,9 @@ async fn main(spawner: Spawner) {
         }
     }
 
-    loop {
+    {
         lcd.show_string(40, 0, "ABROBOT", Color::Red as u16, Color::White as u16, FontSize::_8x16, CharMode::NonOverlay).await;
+        lcd.show_chinese(100, 0, "电子", Color::Red as u16, Color::White as u16, ChineseFontSize::_16x16, CharMode::NonOverlay).await;
         lcd.show_string(10, 20, "LCD_W:", Color::Red as u16, Color::White as u16, FontSize::_8x16, CharMode::NonOverlay).await;
         lcd.show_int_num(58, 20, lcd::WIDTH, 3, Color::Red as u16, Color::White as u16, FontSize::_8x16).await;
         lcd.show_string(10, 40, "LCD_H:", Color::Red as u16, Color::White as u16, FontSize::_8x16, CharMode::NonOverlay).await;
@@ -161,7 +162,9 @@ async fn main(spawner: Spawner) {
         lcd.show_int_num(55, 60, flash_size as u16, 3, Color::Red as u16, Color::White as u16, FontSize::_8x16).await;
         lcd.show_string(79, 60, "M!", Color::Red as u16, Color::White as u16, FontSize::_8x16, CharMode::NonOverlay).await;
 		// LCD_ShowPicture(100,20,40,40,gImage_1);
+    }
 
+    loop {
         Timer::after_millis(1000).await;
     }
 }

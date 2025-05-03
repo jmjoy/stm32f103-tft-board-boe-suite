@@ -2170,7 +2170,6 @@ pub const TFONT32: [FontGB32; 5] = [
 ];
 
 #[derive(Clone, Copy)]
-#[repr(u8)]
 pub enum FontSize {
     _6x12,
     _8x16,
@@ -2190,5 +2189,28 @@ impl FontSize {
 
     pub const fn x(self) -> u8 {
         self.y() / 2
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum ChineseFontSize {
+    _12x12,
+    _16x16,
+    _24x24,
+    _32x32,
+}
+
+impl ChineseFontSize {
+    pub const fn y(self) -> u8 {
+        match self {
+            ChineseFontSize::_12x12 => 12,
+            ChineseFontSize::_16x16 => 16,
+            ChineseFontSize::_24x24 => 24,
+            ChineseFontSize::_32x32 => 32,
+        }
+    }
+
+    pub const fn x(self) -> u8 {
+        self.y()
     }
 }
