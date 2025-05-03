@@ -1,4 +1,8 @@
-use embassy_stm32::{gpio::Output, mode::{self, Async, Mode}, spi::Spi};
+use embassy_stm32::{
+    gpio::Output,
+    mode::{self, Async, Mode},
+    spi::Spi,
+};
 use num_enum::TryFromPrimitive;
 
 // Page size constants
@@ -32,10 +36,10 @@ pub const DUMMY_BYTE: u8 = 0xFF;
 #[derive(TryFromPrimitive)]
 #[repr(u32)]
 pub enum W25QxxID {
- W25Q16     = 0xEF4015,
- W25Q32     = 0xEF4016,
- W25Q64     = 0xEF4017,
- W25Q80     = 0xEF4014,
+    W25Q16 = 0xEF4015,
+    W25Q32 = 0xEF4016,
+    W25Q64 = 0xEF4017,
+    W25Q80 = 0xEF4014,
 }
 
 pub struct W25Qxx {
@@ -51,7 +55,13 @@ impl W25Qxx {
     pub async fn read_device_id(&mut self) -> u8 {
         self.cs.set_low();
 
-        let data = &mut [W25X_DEVICE_ID, DUMMY_BYTE, DUMMY_BYTE, DUMMY_BYTE, DUMMY_BYTE];
+        let data = &mut [
+            W25X_DEVICE_ID,
+            DUMMY_BYTE,
+            DUMMY_BYTE,
+            DUMMY_BYTE,
+            DUMMY_BYTE,
+        ];
         self.spi.transfer_in_place(data).await.unwrap();
         let device_id = data[4];
 
@@ -96,7 +106,7 @@ impl W25Qxx {
         self.cs.set_low();
 
         self.spi.write(&[W25X_READ_STATUS_REG]).await.unwrap();
-        
+
         let mut data = [DUMMY_BYTE];
         loop {
             self.spi.transfer_in_place(&mut data).await.unwrap();
@@ -112,7 +122,7 @@ impl W25Qxx {
         self.write_enable().await;
 
         self.cs.set_low();
-        
+
         // Send "Write to Memory" instruction and address
         let mut cmd_addr = u32::to_be_bytes(write_addr);
         cmd_addr[0] = W25X_PAGE_PROGRAM;
@@ -121,7 +131,7 @@ impl W25Qxx {
         // Limit write size to page size
         let write_count = buffer.len().min(SPI_FLASH_PER_WRITE_PAGE_SIZE);
         let buffer = &buffer[..write_count];
-        
+
         // Write the data
         self.spi.write(buffer).await.unwrap();
 
@@ -153,37 +163,49 @@ impl W25Qxx {
         let mut current_addr = write_addr;
         let mut bytes_written = 0;
         let total_bytes = buffer.len() as usize;
-        
+
         // Handle first unaligned page if needed
         let first_page_offset = current_addr as usize % SPI_FLASH_PAGE_SIZE;
         if first_page_offset > 0 {
             // Calculate bytes to write to align with page boundary
             let bytes_to_page_boundary = (SPI_FLASH_PAGE_SIZE - first_page_offset) as usize;
             let bytes_to_write = bytes_to_page_boundary.min(total_bytes);
-            
+
             // Write partial first page
-            self.page_write(&buffer[bytes_written..bytes_written + bytes_to_write], current_addr).await;
-            
+            self.page_write(
+                &buffer[bytes_written..bytes_written + bytes_to_write],
+                current_addr,
+            )
+            .await;
+
             bytes_written += bytes_to_write;
             current_addr += bytes_to_write as u32;
-            
+
             if bytes_written >= total_bytes {
                 return; // Done if first page write covered all data
             }
         }
-        
+
         // Write full pages
         while bytes_written + SPI_FLASH_PAGE_SIZE <= total_bytes {
-            self.page_write(&buffer[bytes_written..bytes_written + SPI_FLASH_PAGE_SIZE], current_addr).await;
-            
+            self.page_write(
+                &buffer[bytes_written..bytes_written + SPI_FLASH_PAGE_SIZE],
+                current_addr,
+            )
+            .await;
+
             bytes_written += SPI_FLASH_PAGE_SIZE;
             current_addr += SPI_FLASH_PAGE_SIZE as u32;
         }
-        
+
         // Write remaining bytes (last partial page)
         let remaining_bytes = total_bytes - bytes_written;
         if remaining_bytes > 0 {
-            self.page_write(&buffer[bytes_written..bytes_written + remaining_bytes], current_addr).await;
+            self.page_write(
+                &buffer[bytes_written..bytes_written + remaining_bytes],
+                current_addr,
+            )
+            .await;
         }
     }
 }

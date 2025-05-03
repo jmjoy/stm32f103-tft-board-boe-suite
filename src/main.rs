@@ -1,22 +1,29 @@
 #![no_std]
 #![no_main]
 
-mod lcd;
-mod w25qxx;
+pub mod lcd;
+pub mod w25qxx;
 
-use {defmt_rtt as _, panic_probe as _};
-use embassy_stm32::{
-    bind_interrupts, flash, gpio::{Level, Output, Speed}, pac::{self}, peripherals, rcc::{
-        AHBPrescaler, APBPrescaler, Hse, HseMode, LsConfig, Pll, PllMul, PllPreDiv, PllSource,
-        Sysclk
-    }, spi::{self, Spi}, time::Hertz, usart::{self, Uart}, Config
-};
-use embassy_executor::Spawner;
 use defmt::{error, info, warn};
+use embassy_executor::Spawner;
+use embassy_stm32::{
+    Config, bind_interrupts, flash,
+    gpio::{Level, Output, Speed},
+    pac::{self},
+    peripherals,
+    rcc::{
+        AHBPrescaler, APBPrescaler, Hse, HseMode, LsConfig, Pll, PllMul, PllPreDiv, PllSource,
+        Sysclk,
+    },
+    spi::{self, Spi},
+    time::Hertz,
+    usart::{self, Uart},
+};
 use embassy_time::Timer;
-use lcd::LCD;
-use w25qxx::{W25QxxID, W25Qxx};
+use lcd::{font::FontSize, CharMode, Color, LCD};
 use num_enum::TryFromPrimitive;
+use w25qxx::{W25Qxx, W25QxxID};
+use {defmt_rtt as _, panic_probe as _};
 
 bind_interrupts!(struct Irqs {
     USART1 => usart::InterruptHandler<peripherals::USART1>;
@@ -57,7 +64,9 @@ async fn main(spawner: Spawner) {
     spawner.spawn(handle_led(led)).unwrap();
 
     let mut uart1 = Uart::new_blocking(p.USART1, p.PA10, p.PA9, Default::default()).unwrap();
-    uart1.blocking_write(b"stm32f103-tft-board-boe-suite started!\r\n").unwrap();
+    uart1
+        .blocking_write(b"stm32f103-tft-board-boe-suite started!\r\n")
+        .unwrap();
 
     // LCD
     let lcd_spi_config: spi::Config = Default::default();
@@ -69,18 +78,30 @@ async fn main(spawner: Spawner) {
 
     let mut lcd = LCD::new(lcd_spi, lcd_cs, lcd_res, lcd_blk, lcd_dc);
     lcd.init().await;
-    lcd.fill(0, 0, lcd::WIDTH, lcd::HEIGHT, lcd::Color::White as u16).await;
+    lcd.fill(0, 0, lcd::WIDTH, lcd::HEIGHT, lcd::Color::White as u16)
+        .await;
 
     // SPI Flash
     let mut w25qxx_spi_config: spi::Config = Default::default();
     w25qxx_spi_config.mode = spi::MODE_3;
-    let w25qxx_spi = Spi::new(p.SPI2, p.PB13, p.PB15, p.PB14, p.DMA1_CH5, p.DMA1_CH4, w25qxx_spi_config);
+    let w25qxx_spi = Spi::new(
+        p.SPI2,
+        p.PB13,
+        p.PB15,
+        p.PB14,
+        p.DMA1_CH5,
+        p.DMA1_CH4,
+        w25qxx_spi_config,
+    );
     let w25qxx_cs = Output::new(p.PB12, Level::High, Speed::VeryHigh);
 
     let mut w25qxx = W25Qxx::new(w25qxx_spi, w25qxx_cs);
     let device_id = w25qxx.read_device_id().await;
     let flash_id = w25qxx.read_id().await;
-    info!("FlashID is 0x{:x}, Device ID is 0x{:x}", flash_id, device_id);
+    info!(
+        "FlashID is 0x{:x}, Device ID is 0x{:x}",
+        flash_id, device_id
+    );
 
     let mut flash_size = 0u8;
 
@@ -97,12 +118,12 @@ async fn main(spawner: Spawner) {
                 }
                 W25QxxID::W25Q64 => {
                     info!("flash芯片型号为W25Q64!");
-                    flash_size = 4;
-                },
+                    flash_size = 8;
+                }
                 W25QxxID::W25Q80 => {
                     info!("flash芯片型号为W25Q80!");
                     flash_size = 1;
-                },
+                }
             }
 
             const FLASH_ADDRESS: u32 = 0x00000;
@@ -118,7 +139,9 @@ async fn main(spawner: Spawner) {
 
             if TX_BUFFER == rx_buffer {
                 info!("串行flash测试成功!");
-                uart1.blocking_write(b"serial flash test success!\r\n").unwrap();
+                uart1
+                    .blocking_write(b"serial flash test success!\r\n")
+                    .unwrap();
             } else {
                 error!("flash测试失败!");
             }
@@ -129,7 +152,17 @@ async fn main(spawner: Spawner) {
     }
 
     loop {
-        Timer::after_millis(500).await;
+        lcd.show_string(40, 0, "ABROBOT", Color::Red as u16, Color::White as u16, FontSize::_8x16, CharMode::NonOverlay).await;
+        lcd.show_string(10, 20, "LCD_W:", Color::Red as u16, Color::White as u16, FontSize::_8x16, CharMode::NonOverlay).await;
+        lcd.show_int_num(58, 20, lcd::WIDTH, 3, Color::Red as u16, Color::White as u16, FontSize::_8x16).await;
+        lcd.show_string(10, 40, "LCD_H:", Color::Red as u16, Color::White as u16, FontSize::_8x16, CharMode::NonOverlay).await;
+        lcd.show_int_num(58, 40, lcd::HEIGHT, 3, Color::Red as u16, Color::White as u16, FontSize::_8x16).await;
+        lcd.show_string(10, 60, "Flash:", Color::Red as u16, Color::White as u16, FontSize::_8x16, CharMode::NonOverlay).await;
+        lcd.show_int_num(55, 60, flash_size as u16, 3, Color::Red as u16, Color::White as u16, FontSize::_8x16).await;
+        lcd.show_string(79, 60, "M!", Color::Red as u16, Color::White as u16, FontSize::_8x16, CharMode::NonOverlay).await;
+		// LCD_ShowPicture(100,20,40,40,gImage_1);
+
+        Timer::after_millis(1000).await;
     }
 }
 
