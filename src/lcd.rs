@@ -1,4 +1,4 @@
-use embassy_stm32::{gpio::{Level, Output}, mode, spi::Spi};
+use embassy_stm32::{gpio::{Level, Output}, mode::{self, Async}, spi::Spi};
 use embassy_time::Timer;
 
 pub const DIRECTION: Direction = Direction::Horizontal1;
@@ -45,7 +45,7 @@ pub enum Color {
 }
 
 pub struct LCD {
-    spi: Spi<'static, mode::Async>,
+    spi: Spi<'static, Async>,
     cs: Output<'static>,
     res: Output<'static>,
     blk: Output<'static>,
@@ -53,7 +53,7 @@ pub struct LCD {
 }
 
 impl LCD {
-    pub fn new(spi: Spi<'static, mode::Async>, cs: Output<'static>, res: Output<'static>, blk: Output<'static>, dc: Output<'static>) -> Self {
+    pub fn new(spi: Spi<'static, Async>, cs: Output<'static>, res: Output<'static>, blk: Output<'static>, dc: Output<'static>) -> Self {
         Self { spi, cs, res, blk, dc }
     }
 
