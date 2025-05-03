@@ -5,6 +5,7 @@ pub mod lcd;
 pub mod w25qxx;
 
 use defmt::{error, info, warn};
+use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_stm32::{
     Config, bind_interrupts,
@@ -26,8 +27,8 @@ use lcd::{
     pic::G_IMAGE_1,
 };
 use num_enum::TryFromPrimitive;
+use panic_probe as _;
 use w25qxx::{W25Qxx, W25QxxID};
-use {defmt_rtt as _, panic_probe as _};
 
 bind_interrupts!(struct Irqs {
     USART1 => usart::InterruptHandler<peripherals::USART1>;

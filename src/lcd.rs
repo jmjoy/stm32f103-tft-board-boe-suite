@@ -66,10 +66,7 @@ pub struct LCD {
 
 impl LCD {
     pub fn new(
-        spi: Spi<'static, Async>,
-        cs: Output<'static>,
-        res: Output<'static>,
-        blk: Output<'static>,
+        spi: Spi<'static, Async>, cs: Output<'static>, res: Output<'static>, blk: Output<'static>,
         dc: Output<'static>,
     ) -> Self {
         Self {
@@ -87,11 +84,11 @@ impl LCD {
         self.res.set_high();
         Timer::after_millis(100).await;
 
-        //打开背光
+        // 打开背光
         self.blk.set_high();
         Timer::after_millis(100).await;
 
-        //Sleep exit
+        // Sleep exit
         self.write_reg(&[0x11]).await;
         Timer::after_millis(120).await;
         self.write_reg(&[0xb1]).await;
@@ -315,12 +312,7 @@ impl LCD {
     }
 
     pub async fn show_char(
-        &mut self,
-        (mut x, mut y): (u16, u16),
-        ch: char,
-        fc: u16,
-        bc: u16,
-        size: FontSize,
+        &mut self, (mut x, mut y): (u16, u16), ch: char, fc: u16, bc: u16, size: FontSize,
         mode: CharMode,
     ) {
         let size_y = size.y();
@@ -379,12 +371,7 @@ impl LCD {
     }
 
     pub async fn show_string(
-        &mut self,
-        (mut x, y): (u16, u16),
-        s: &str,
-        fc: u16,
-        bc: u16,
-        size: FontSize,
+        &mut self, (mut x, y): (u16, u16), s: &str, fc: u16, bc: u16, size: FontSize,
         mode: CharMode,
     ) {
         let size_y = size.y();
@@ -395,13 +382,7 @@ impl LCD {
     }
 
     pub async fn show_int_num(
-        &mut self,
-        (x, y): (u16, u16),
-        num: u16,
-        len: u8,
-        fc: u16,
-        bc: u16,
-        size: FontSize,
+        &mut self, (x, y): (u16, u16), num: u16, len: u8, fc: u16, bc: u16, size: FontSize,
     ) {
         let mut enshow = false;
         let size_x = size.x();
@@ -439,13 +420,7 @@ impl LCD {
     }
 
     pub async fn show_float_num(
-        &mut self,
-        (x, y): (u16, u16),
-        num: f32,
-        mut len: u8,
-        fc: u16,
-        bc: u16,
-        size: FontSize,
+        &mut self, (x, y): (u16, u16), num: f32, mut len: u8, fc: u16, bc: u16, size: FontSize,
     ) {
         let size_x = size.x();
         let num1 = (num * 100.0) as u16;
@@ -488,12 +463,7 @@ impl LCD {
     }
 
     pub async fn show_chinese(
-        &mut self,
-        (mut x, y): (u16, u16),
-        s: &str,
-        fc: u16,
-        bc: u16,
-        size: ChineseFontSize,
+        &mut self, (mut x, y): (u16, u16), s: &str, fc: u16, bc: u16, size: ChineseFontSize,
         mode: CharMode,
     ) {
         for ch in s.chars() {
@@ -503,12 +473,7 @@ impl LCD {
     }
 
     async fn show_chinese_char(
-        &mut self,
-        (mut x, mut y): (u16, u16),
-        ch: char,
-        fc: u16,
-        bc: u16,
-        size: ChineseFontSize,
+        &mut self, (mut x, mut y): (u16, u16), ch: char, fc: u16, bc: u16, size: ChineseFontSize,
         mode: CharMode,
     ) {
         let size_y = size.y() as usize;
@@ -681,27 +646,8 @@ impl LCD {
         }
     }
 
-    // void LCD_ShowPicture(u16 x,u16 y,u16 length,u16 width,const u8 pic[])
-    // {
-    // 	u16 i,j;
-    // 	u32 k=0;
-    // 	LCD_Address_Set(x,y,x+length-1,y+width-1);
-    // 	for(i=0;i<length;i++)
-    // 	{
-    // 		for(j=0;j<width;j++)
-    // 		{
-    // 			LCD_WR_DATA8(pic[k*2]);
-    // 			LCD_WR_DATA8(pic[k*2+1]);
-    // 			k++;
-    // 		}
-    // 	}
-    // }
-
     pub async fn show_picture(
-        &mut self,
-        (x, y): (u16, u16),
-        (length, width): (u16, u16),
-        pic: &[u8],
+        &mut self, (x, y): (u16, u16), (length, width): (u16, u16), pic: &[u8],
     ) {
         self.set_address(x, y, x + length - 1, y + width - 1).await;
 

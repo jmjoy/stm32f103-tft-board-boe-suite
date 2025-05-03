@@ -2,6 +2,10 @@
 name = "stm32f103-tft-board-boe-suite"
 version = "0.1.0"
 edition = "2024"
+authors = ["jmjoy <jmjoy@apache.org>"]
+license = "MulanPSL-2.0"
+repository = "https://github.com/jmjoy/stm32f103-tft-board-boe-suite"
+rust-version = "1.85"
 
 [dependencies]
 as-what = "0.1.1"
