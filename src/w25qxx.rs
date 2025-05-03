@@ -1,8 +1,4 @@
-use embassy_stm32::{
-    gpio::Output,
-    mode::{self, Async, Mode},
-    spi::Spi,
-};
+use embassy_stm32::{gpio::Output, mode::Async, spi::Spi};
 use num_enum::TryFromPrimitive;
 
 // Page size constants
@@ -156,19 +152,19 @@ impl W25Qxx {
     }
 
     pub async fn buffer_write(&mut self, buffer: &[u8], write_addr: u32) {
-        if buffer.len() == 0 {
+        if buffer.is_empty() {
             return;
         }
 
         let mut current_addr = write_addr;
         let mut bytes_written = 0;
-        let total_bytes = buffer.len() as usize;
+        let total_bytes = buffer.len();
 
         // Handle first unaligned page if needed
         let first_page_offset = current_addr as usize % SPI_FLASH_PAGE_SIZE;
         if first_page_offset > 0 {
             // Calculate bytes to write to align with page boundary
-            let bytes_to_page_boundary = (SPI_FLASH_PAGE_SIZE - first_page_offset) as usize;
+            let bytes_to_page_boundary = SPI_FLASH_PAGE_SIZE - first_page_offset;
             let bytes_to_write = bytes_to_page_boundary.min(total_bytes);
 
             // Write partial first page

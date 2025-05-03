@@ -7,7 +7,7 @@ pub mod w25qxx;
 use defmt::{error, info, warn};
 use embassy_executor::Spawner;
 use embassy_stm32::{
-    Config, bind_interrupts, flash,
+    Config, bind_interrupts,
     gpio::{Level, Output, Speed},
     pac::{self},
     peripherals,
@@ -157,8 +157,7 @@ async fn main(spawner: Spawner) {
 
     {
         lcd.show_string(
-            40,
-            0,
+            (40, 0),
             "ABROBOT",
             Color::Red as u16,
             Color::White as u16,
@@ -167,8 +166,7 @@ async fn main(spawner: Spawner) {
         )
         .await;
         lcd.show_chinese(
-            100,
-            0,
+            (100, 0),
             "电子",
             Color::Red as u16,
             Color::White as u16,
@@ -177,8 +175,7 @@ async fn main(spawner: Spawner) {
         )
         .await;
         lcd.show_string(
-            10,
-            20,
+            (10, 20),
             "LCD_W:",
             Color::Red as u16,
             Color::White as u16,
@@ -187,8 +184,7 @@ async fn main(spawner: Spawner) {
         )
         .await;
         lcd.show_int_num(
-            58,
-            20,
+            (58, 20),
             lcd::WIDTH,
             3,
             Color::Red as u16,
@@ -197,8 +193,7 @@ async fn main(spawner: Spawner) {
         )
         .await;
         lcd.show_string(
-            10,
-            40,
+            (10, 40),
             "LCD_H:",
             Color::Red as u16,
             Color::White as u16,
@@ -207,8 +202,7 @@ async fn main(spawner: Spawner) {
         )
         .await;
         lcd.show_int_num(
-            58,
-            40,
+            (58, 40),
             lcd::HEIGHT,
             3,
             Color::Red as u16,
@@ -217,8 +211,7 @@ async fn main(spawner: Spawner) {
         )
         .await;
         lcd.show_string(
-            10,
-            60,
+            (10, 60),
             "Flash:",
             Color::Red as u16,
             Color::White as u16,
@@ -227,8 +220,7 @@ async fn main(spawner: Spawner) {
         )
         .await;
         lcd.show_int_num(
-            55,
-            60,
+            (55, 60),
             flash_size as u16,
             3,
             Color::Red as u16,
@@ -237,8 +229,7 @@ async fn main(spawner: Spawner) {
         )
         .await;
         lcd.show_string(
-            79,
-            60,
+            (79, 60),
             "M!",
             Color::Red as u16,
             Color::White as u16,
@@ -246,7 +237,7 @@ async fn main(spawner: Spawner) {
             CharMode::NonOverlay,
         )
         .await;
-        lcd.show_picture(100, 20, 40, 40, G_IMAGE_1.as_slice())
+        lcd.show_picture((100, 20), (40, 40), G_IMAGE_1.as_slice())
             .await;
     }
 

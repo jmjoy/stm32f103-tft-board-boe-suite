@@ -2,11 +2,8 @@ pub mod font;
 pub mod pic;
 
 use as_what::{AsU16, AsUsize};
-use embassy_stm32::{
-    gpio::{Level, Output},
-    mode::{self, Async},
-    spi::Spi,
-};
+use core::cmp::{Ordering, max};
+use embassy_stm32::{gpio::Output, mode::Async, spi::Spi};
 use embassy_time::Timer;
 use font::{ASCII_1206, ASCII_1608, ASCII_2412, ASCII_3216, ChineseFontSize, FontSize};
 
@@ -228,8 +225,7 @@ impl LCD {
         let mut xerr: i32 = 0;
         let mut yerr: i32 = 0;
         let mut delta_x = i32::from(x2) - i32::from(x1);
-        let delta_y = i32::from(y2) - i32::from(y1);
-        let distance: i32;
+        let mut delta_y = i32::from(y2) - i32::from(y1);
 
         let incx: i32;
         let incy: i32;
@@ -237,29 +233,33 @@ impl LCD {
         let mut row = i32::from(x1);
         let mut col = i32::from(y1);
 
-        if delta_x > 0 {
-            incx = 1;
-        } else if delta_x == 0 {
-            incx = 0;
-        } else {
-            incx = -1;
-            delta_x = -delta_x;
+        match delta_x.cmp(&0) {
+            Ordering::Greater => {
+                incx = 1;
+            }
+            Ordering::Equal => {
+                incx = 0;
+            }
+            Ordering::Less => {
+                incx = -1;
+                delta_x = -delta_x;
+            }
         }
 
-        if delta_y > 0 {
-            incy = 1;
-        } else if delta_y == 0 {
-            incy = 0;
-        } else {
-            incy = -1;
-            let delta_y = -delta_y;
+        match delta_y.cmp(&0) {
+            Ordering::Greater => {
+                incy = 1;
+            }
+            Ordering::Equal => {
+                incy = 0;
+            }
+            Ordering::Less => {
+                incy = -1;
+                delta_y = -delta_y;
+            }
         }
 
-        if delta_x > delta_y {
-            distance = delta_x;
-        } else {
-            distance = delta_y;
-        }
+        let distance = max(delta_x, delta_y);
 
         for _ in 0..=distance as usize {
             self.draw_point(row as u16, col as u16, color).await;
@@ -316,8 +316,7 @@ impl LCD {
 
     pub async fn show_char(
         &mut self,
-        mut x: u16,
-        mut y: u16,
+        (mut x, mut y): (u16, u16),
         ch: char,
         fc: u16,
         bc: u16,
@@ -381,8 +380,7 @@ impl LCD {
 
     pub async fn show_string(
         &mut self,
-        mut x: u16,
-        y: u16,
+        (mut x, y): (u16, u16),
         s: &str,
         fc: u16,
         bc: u16,
@@ -391,15 +389,14 @@ impl LCD {
     ) {
         let size_y = size.y();
         for c in s.chars() {
-            self.show_char(x, y, c, fc, bc, size, mode).await;
+            self.show_char((x, y), c, fc, bc, size, mode).await;
             x += size_y.as_u16() / 2;
         }
     }
 
     pub async fn show_int_num(
         &mut self,
-        x: u16,
-        y: u16,
+        (x, y): (u16, u16),
         num: u16,
         len: u8,
         fc: u16,
@@ -412,11 +409,10 @@ impl LCD {
         for t in 0..len {
             let temp = ((num / 10u16.pow((len - t - 1) as u32)) % 10) as u8;
 
-            if enshow == false && t < (len - 1) {
+            if !enshow && t < (len - 1) {
                 if temp == 0 {
                     self.show_char(
-                        x + t as u16 * size_x as u16,
-                        y,
+                        (x + t as u16 * size_x as u16, y),
                         ' ',
                         fc,
                         bc,
@@ -431,8 +427,7 @@ impl LCD {
             }
 
             self.show_char(
-                x + t as u16 * size_x as u16,
-                y,
+                (x + t as u16 * size_x as u16, y),
                 (temp + 48) as char,
                 fc,
                 bc,
@@ -445,25 +440,24 @@ impl LCD {
 
     pub async fn show_float_num(
         &mut self,
-        x: u16,
-        y: u16,
+        (x, y): (u16, u16),
         num: f32,
-        len: u8,
+        mut len: u8,
         fc: u16,
         bc: u16,
         size: FontSize,
     ) {
         let size_x = size.x();
         let num1 = (num * 100.0) as u16;
-        let mut len = len;
 
-        for mut t in 0..len {
-            let temp = ((num1 / 10u16.pow((len - t - 1) as u32) as u16) % 10) as u8;
+        let mut t = 0;
+
+        loop {
+            let temp = ((num1 / 10u16.pow((len - t - 1) as u32)) % 10) as u8;
 
             if t == (len - 2) {
                 self.show_char(
-                    x + (len - 2) as u16 * size_x as u16,
-                    y,
+                    (x + (len - 2) as u16 * size_x as u16, y),
                     '.',
                     fc,
                     bc,
@@ -476,8 +470,7 @@ impl LCD {
             }
 
             self.show_char(
-                x + t as u16 * size_x as u16,
-                y,
+                (x + t as u16 * size_x as u16, y),
                 (temp + 48) as char,
                 fc,
                 bc,
@@ -485,13 +478,18 @@ impl LCD {
                 CharMode::NonOverlay,
             )
             .await;
+
+            if t >= len {
+                break;
+            }
+
+            t += 1;
         }
     }
 
     pub async fn show_chinese(
         &mut self,
-        mut x: u16,
-        y: u16,
+        (mut x, y): (u16, u16),
         s: &str,
         fc: u16,
         bc: u16,
@@ -499,15 +497,14 @@ impl LCD {
         mode: CharMode,
     ) {
         for ch in s.chars() {
-            self.show_chinese_char(x, y, ch, fc, bc, size, mode).await;
+            self.show_chinese_char((x, y), ch, fc, bc, size, mode).await;
             x += size.y() as u16;
         }
     }
 
     async fn show_chinese_char(
         &mut self,
-        mut x: u16,
-        mut y: u16,
+        (mut x, mut y): (u16, u16),
         ch: char,
         fc: u16,
         bc: u16,
@@ -700,7 +697,12 @@ impl LCD {
     // 	}
     // }
 
-    pub async fn show_picture(&mut self, x: u16, y: u16, length: u16, width: u16, pic: &[u8]) {
+    pub async fn show_picture(
+        &mut self,
+        (x, y): (u16, u16),
+        (length, width): (u16, u16),
+        pic: &[u8],
+    ) {
         self.set_address(x, y, x + length - 1, y + width - 1).await;
 
         let mut k = 0usize;
