@@ -66,8 +66,10 @@ async fn main(spawner: Spawner) {
     let lcd_res = Output::new(p.PB6, Level::Low, Speed::VeryHigh);
     let lcd_blk = Output::new(p.PB8, Level::Low, Speed::VeryHigh);
     let lcd_dc = Output::new(p.PB4, Level::Low, Speed::VeryHigh);
+
     let mut lcd = LCD::new(lcd_spi, lcd_cs, lcd_res, lcd_blk, lcd_dc);
     lcd.init().await;
+    lcd.fill(0, 0, lcd::WIDTH, lcd::HEIGHT, lcd::Color::White as u16).await;
 
     loop {
         Timer::after_millis(500).await;
