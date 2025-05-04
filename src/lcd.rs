@@ -3,7 +3,12 @@ pub mod pic;
 
 use as_what::{AsU16, AsUsize};
 use core::cmp::{Ordering, max};
-use embassy_stm32::{gpio::Output, mode::Async, spi::Spi};
+use embassy_stm32::{
+    gpio::Output,
+    mode::Async,
+    spi::Spi,
+    timer::{self, simple_pwm::SimplePwmChannel},
+};
 use embassy_time::Timer;
 use font::{ASCII_1206, ASCII_1608, ASCII_2412, ASCII_3216, ChineseFontSize, FontSize};
 
@@ -56,18 +61,18 @@ pub enum CharMode {
     Overlay,
 }
 
-pub struct LCD {
+pub struct LCD<C: timer::GeneralInstance4Channel> {
     spi: Spi<'static, Async>,
     cs: Output<'static>,
     res: Output<'static>,
-    blk: Output<'static>,
+    blk: SimplePwmChannel<'static, C>,
     dc: Output<'static>,
 }
 
-impl LCD {
+impl<C: timer::GeneralInstance4Channel> LCD<C> {
     pub fn new(
-        spi: Spi<'static, Async>, cs: Output<'static>, res: Output<'static>, blk: Output<'static>,
-        dc: Output<'static>,
+        spi: Spi<'static, Async>, cs: Output<'static>, res: Output<'static>,
+        blk: SimplePwmChannel<'static, C>, dc: Output<'static>,
     ) -> Self {
         Self {
             spi,
@@ -85,7 +90,8 @@ impl LCD {
         Timer::after_millis(100).await;
 
         // 打开背光
-        self.blk.set_high();
+        self.blk.set_duty_cycle_percent(100);
+        self.blk.enable();
         Timer::after_millis(100).await;
 
         // Sleep exit
@@ -659,5 +665,9 @@ impl LCD {
                 k += 1;
             }
         }
+    }
+
+    pub fn set_brightness(&mut self, percent: u8) {
+        self.blk.set_duty_cycle_percent(percent);
     }
 }

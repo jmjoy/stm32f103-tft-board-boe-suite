@@ -9,7 +9,7 @@ use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_stm32::{
     Config, bind_interrupts,
-    gpio::{Level, Output, Speed},
+    gpio::{Level, Output, OutputType, Speed},
     pac::{self},
     peripherals,
     rcc::{
@@ -18,6 +18,7 @@ use embassy_stm32::{
     },
     spi::{self, Spi},
     time::Hertz,
+    timer::simple_pwm::{PwmPin, SimplePwm, SimplePwmChannels},
     usart::{self, Uart},
 };
 use embassy_time::Timer;
@@ -78,8 +79,17 @@ async fn main(spawner: Spawner) {
     let lcd_spi = Spi::new_txonly(p.SPI1, p.PB3, p.PB5, p.DMA1_CH3, lcd_spi_config);
     let lcd_cs = Output::new(p.PB7, Level::Low, Speed::VeryHigh);
     let lcd_res = Output::new(p.PB6, Level::Low, Speed::VeryHigh);
-    let lcd_blk = Output::new(p.PB8, Level::Low, Speed::VeryHigh);
     let lcd_dc = Output::new(p.PB4, Level::Low, Speed::VeryHigh);
+    let SimplePwmChannels { ch3: lcd_blk, .. } = SimplePwm::new(
+        p.TIM4,
+        None,
+        None,
+        Some(PwmPin::new_ch3(p.PB8, OutputType::PushPull)),
+        None,
+        Hertz::khz(10),
+        Default::default(),
+    )
+    .split();
 
     let mut lcd = LCD::new(lcd_spi, lcd_cs, lcd_res, lcd_blk, lcd_dc);
     lcd.init().await;
@@ -243,7 +253,14 @@ async fn main(spawner: Spawner) {
     }
 
     loop {
-        Timer::after_millis(1000).await;
+        for percent in 10..=100 {
+            lcd.set_brightness(percent);
+            Timer::after_millis(100).await;
+        }
+        for percent in (11..100).rev() {
+            lcd.set_brightness(percent);
+            Timer::after_millis(100).await;
+        }
     }
 }
 
